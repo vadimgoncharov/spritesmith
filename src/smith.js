@@ -20,9 +20,8 @@ var async = require('async'),
  * @returns {String} callback[1].image Binary string representation of image
  * @returns {Object} callback[1].coordinates Map from file name to an object containing x, y, height, and width information about the source image
  */
-function Spritesmith(params, callback) {
-  var retObj = {},
-      files = params.src,
+function Spritesmith(params) {
+  var files = params.src,
       enginePref = params.engine || 'auto',
       engine = engines[enginePref],
       algorithmPref = params.algorithm || 'top-down';
@@ -50,7 +49,8 @@ function Spritesmith(params, callback) {
       layer = new Layout(algorithmPref),
       padding = params.padding || 0,
       exportOpts = params.exportOpts || {},
-      packedObj;
+      packedObj,
+      info = {};
 
   // In a waterfall fashion
   async.waterfall([
@@ -94,7 +94,7 @@ function Spritesmith(params, callback) {
       });
 
       // Save the coordinates
-      retObj.coordinates = coordinates;
+      info.coordinates = coordinates;
 
       // Continue
       cb(null);
@@ -114,7 +114,7 @@ function Spritesmith(params, callback) {
       }
 
       // Export the total width and height of the generated canvas
-      retObj.properties = {
+      info.properties = {
         width: width,
         height: height
       };
@@ -150,12 +150,10 @@ function Spritesmith(params, callback) {
 
       // Callback
       cb(null);
-    },
-    function smithCallbackData (cb) {
-      // Callback with the return object
-      cb(null, retObj);
     }
-  ], callback);
+  ], function handleErr (err) {
+
+  });
 }
 
 // Add the smiths to Spritesmith
