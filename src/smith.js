@@ -1,6 +1,7 @@
 var assert = require('assert'),
     async = require('async'),
     Layout = require('layout'),
+    MuxDemux = require('mux-demux'),
     CanvasSmith = require('./smiths/canvas.smith.js'),
     EngineSmith = require('./smiths/engine.smith.js'),
     engines = {};
@@ -52,108 +53,117 @@ function Spritesmith(params) {
       packedObj,
       info = {};
 
-  // In a waterfall fashion
-  async.waterfall([
-    function grabImages (cb) {
-      // Map the files into their image counterparts
-      engineSmith.createImages(files, cb);
-    },
-    // Then, add the images to our canvas (dry run)
-    function smithAddFiles (images, cb) {
-      images.forEach(function (img) {
-        // Save the non-padded properties as meta data
-        var width = img.width,
-            height = img.height,
-            meta = {'img': img, 'actualWidth': width, 'actualHeight': height};
+  // Create a stream
+  var output = new MuxDemux();
 
-        // Add the item with padding to our layer
-        layer.addItem({'width': width + padding, 'height': height + padding, 'meta': meta});
-      });
+  // Wait for listeners to get set up
+  process.nextTick(function () {
+    // In a waterfall fashion
+    async.waterfall([
+      function grabImages (cb) {
+        // Map the files into their image counterparts
+        engineSmith.createImages(files, cb);
+      },
+      // Then, add the images to our canvas (dry run)
+      function smithAddFiles (images, cb) {
+        images.forEach(function (img) {
+          // Save the non-padded properties as meta data
+          var width = img.width,
+              height = img.height,
+              meta = {'img': img, 'actualWidth': width, 'actualHeight': height};
 
-      // Callback with nothing
-      cb(null);
-    },
-    // Then, output the coordinates
-    function smithOutputCoordinates (cb) {
-      // Export and saved packedObj for later
-      packedObj = layer['export']();
+          // Add the item with padding to our layer
+          layer.addItem({'width': width + padding, 'height': height + padding, 'meta': meta});
+        });
 
-      // Extract the coordinates
-      var coordinates = {},
-          packedItems = packedObj.items;
-      packedItems.forEach(function (item) {
-        var meta = item.meta,
-            img = meta.img,
-            name = img._filepath;
-        coordinates[name] = {
-          'x': item.x,
-          'y': item.y,
-          'width': meta.actualWidth,
-          'height': meta.actualHeight
+        // Callback with nothing
+        cb(null);
+      },
+      // Then, output the coordinates
+      function smithOutputCoordinates (cb) {
+        // Export and saved packedObj for later
+        packedObj = layer['export']();
+
+        // Extract the coordinates
+        var coordinates = {},
+            packedItems = packedObj.items;
+        packedItems.forEach(function (item) {
+          var meta = item.meta,
+              img = meta.img,
+              name = img._filepath;
+          coordinates[name] = {
+            'x': item.x,
+            'y': item.y,
+            'width': meta.actualWidth,
+            'height': meta.actualHeight
+          };
+        });
+
+        // Save the coordinates
+        info.coordinates = coordinates;
+
+        // Continue
+        cb(null);
+      },
+      // Then, generate a canvas
+      function generateCanvas (cb) {
+        // Grab and fallback the width/height
+        var width = Math.max(packedObj.width || 0, 0),
+            height = Math.max(packedObj.height || 0, 0);
+
+        // If there are items
+        var itemsExist = packedObj.items.length;
+        if (itemsExist) {
+          // Remove the last item's padding
+          width -= padding;
+          height -= padding;
+        }
+
+        // Export the total width and height of the generated canvas
+        info.properties = {
+          width: width,
+          height: height
         };
-      });
 
-      // Save the coordinates
-      info.coordinates = coordinates;
+        // If there are items, generate the canvas
+        if (itemsExist) {
+          engine.createCanvas(width, height, cb);
+        } else {
+        // Otherwise, skip over potential errors/CPU
+          cb(null, '');
+        }
+      },
+      // Then, export the canvas
+      function exportCanvas (canvas, cb) {
+        // If there is no canvas, callback with an empty string
+        var items = packedObj.items;
+        if (!canvas) {
+          return cb(null, '');
+        }
 
-      // Continue
-      cb(null);
-    },
-    // Then, generate a canvas
-    function generateCanvas (cb) {
-      // Grab and fallback the width/height
-      var width = Math.max(packedObj.width || 0, 0),
-          height = Math.max(packedObj.height || 0, 0);
+        // Create a CanvasSmithy
+        var canvasSmith = new CanvasSmith(canvas);
 
-      // If there are items
-      var itemsExist = packedObj.items.length;
-      if (itemsExist) {
-        // Remove the last item's padding
-        width -= padding;
-        height -= padding;
+        // Add the images onto canvasSmith
+        canvasSmith.addImages(items);
+
+        // Export our canvas
+        canvasSmith['export'](exportOpts, cb);
+      },
+      function saveImageToRetObj(imgStr, cb) {
+        // Save the image to the retObj
+        retObj.image = imgStr;
+
+        // Callback
+        cb(null);
       }
-
-      // Export the total width and height of the generated canvas
-      info.properties = {
-        width: width,
-        height: height
-      };
-
-      // If there are items, generate the canvas
-      if (itemsExist) {
-        engine.createCanvas(width, height, cb);
-      } else {
-      // Otherwise, skip over potential errors/CPU
-        cb(null, '');
-      }
-    },
-    // Then, export the canvas
-    function exportCanvas (canvas, cb) {
-      // If there is no canvas, callback with an empty string
-      var items = packedObj.items;
-      if (!canvas) {
-        return cb(null, '');
-      }
-
-      // Create a CanvasSmithy
-      var canvasSmith = new CanvasSmith(canvas);
-
-      // Add the images onto canvasSmith
-      canvasSmith.addImages(items);
-
-      // Export our canvas
-      canvasSmith['export'](exportOpts, cb);
-    },
-    function saveImageToRetObj(imgStr, cb) {
-      // Save the image to the retObj
-      retObj.image = imgStr;
-
-      // Callback
-      cb(null);
-    }
-  ], function handleErr (err) {
-
+    ], function handleErr (err) {
+      output.emit('error', err);
+    });
   });
+
+  // Return the output
+  return output;
 }
 
 // Add the smiths to Spritesmith
