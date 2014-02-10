@@ -1,8 +1,8 @@
-var async = require('async'),
-    assert = require('assert'),
-    EngineSmith = require('./smiths/engine.smith.js'),
+var assert = require('assert'),
+    async = require('async'),
     Layout = require('layout'),
     CanvasSmith = require('./smiths/canvas.smith.js'),
+    EngineSmith = require('./smiths/engine.smith.js'),
     engines = {};
 
 
