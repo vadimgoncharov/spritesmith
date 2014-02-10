@@ -1,7 +1,7 @@
 var assert = require('assert'),
     async = require('async'),
     Layout = require('layout'),
-    MuxDemux = require('mux-demux'),
+    EventEmitter = require('events').EventEmitter,
     CanvasSmith = require('./smiths/canvas.smith.js'),
     EngineSmith = require('./smiths/engine.smith.js'),
     engines = {};
@@ -54,7 +54,8 @@ function Spritesmith(params) {
       info = {};
 
   // Create a stream
-  var output = new MuxDemux();
+  var output = new EventEmitter();
+  output.emit('error', new Error('hai'));
 
   // Wait for listeners to get set up
   process.nextTick(function () {
