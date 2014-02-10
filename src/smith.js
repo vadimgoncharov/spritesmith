@@ -53,9 +53,8 @@ function Spritesmith(params) {
       packedObj,
       info = {};
 
-  // Create a stream
+  // Create our streams
   var output = new EventEmitter();
-  output.emit('error', new Error('hai'));
 
   // Wait for listeners to get set up
   process.nextTick(function () {
