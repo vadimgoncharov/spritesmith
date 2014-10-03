@@ -3,6 +3,8 @@ var assert = require('assert'),
     fs = require('fs'),
     path = require('path'),
     _ = require('underscore'),
+    async = require('async'),
+    getPixels = require('get-pixels'),
     spritesmith = require('../src/smith.js');
 
 // Set up paths
@@ -84,9 +86,7 @@ var spritesmithUtils = {
     }
 
     // Assert the actual image is the same expected
-    var actualImage = result.image,
-        expectedFilenames = ['canvas.png', 'gm.png', 'gm2.png', 'phantomjs.png', 'phantomjs2.png'],
-        matchesAnImage = false;
+    var actualImage = result.image;
 
     // ANTI-PATTERN: Looping over set without identifiable lines for stack traces
     expectedFilenames.forEach(function testAgainstExpected (filename) {
