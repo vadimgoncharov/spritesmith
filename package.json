@@ -4,7 +4,7 @@
   "description": "Utility that takes images and creates a spritesheet with JSON sprite data",
   "main": "src/smith.js",
   "scripts": {
-    "test": "mocha src-test/ --timeout 60000"
+    "test": "cd src-test && doubleshot --timeout 60000 --outline smith.outline.js --content smith.content.js"
   },
   "keywords": [
     "sprite",
@@ -19,13 +19,8 @@
     "layout": "~2.0.0"
   },
   "devDependencies": {
-    "mocha": "~1.21.4",
-    "underscore": "~1.4.4"
-  },
-  "optionalDependencies": {
-    "canvassmith": "~0.2.0",
-    "gmsmith": "~0.4.1",
-    "phantomjssmith": "~0.5.0",
+    "doubleshot": "~2.13.1",
+    "underscore": "~1.4.4",
     "pngsmith": "~0.1.0"
   },
   "repository": {
